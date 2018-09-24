@@ -73,32 +73,43 @@ server.unifiedServer = (req, res) => {
     };
 
     // Route request to handler specified in the router
-    chosenHandler(data, (statusCode, payload) => {
-      // Use statusCode called back by handler or default to 200
-      statusCode = typeof(statusCode) === 'number' ? statusCode : 200;
-
-      // User payload called back by handler or default to empty object
-      payload = typeof(payload) === 'object' ? payload : {};
-
-      // Convert payload to string
-      const payloadString = JSON.stringify(payload);
-
-      // Return the response
-      res.setHeader('Content-Type', 'application/json');
-      res.writeHead(statusCode);
-      res.end(payloadString);
-
-      // Log the response
-      // If the response is 200 or 201 print green otherwise print red
-      if (statusCode === 200 || statusCode === 201) {
-        debug('\x1b[32m%s\x1b[0m', `${method.toUpperCase()} /${trimmedPath} ${statusCode}`);
-      } else {
-        debug('\x1b[31m%s\x1b[0m', `${method.toUpperCase()} /${trimmedPath} ${statusCode}`);
-      }
-    });
+    try {
+      chosenHandler(data, (statusCode, payload) => {
+        server.processHandlerResponse(res, method, trimmedPath, statusCode, payload);
+      });
+    } catch(error) {
+      debug(error);
+      server.processHandlerResponse(res, method, trimmedPath, 500, {error: 'An unknown error has occurred'});
+    }
 
   });
 }
+
+// Process the response from the handler
+server.processHandlerResponse = (res, method, trimmedPath, statusCode, payload) => {
+
+  // Use statusCode called back by handler or default to 200
+  statusCode = typeof(statusCode) === 'number' ? statusCode : 200;
+
+  // User payload called back by handler or default to empty object
+  payload = typeof(payload) === 'object' ? payload : {};
+
+  // Convert payload to string
+  const payloadString = JSON.stringify(payload);
+
+  // Return the response
+  res.setHeader('Content-Type', 'application/json');
+  res.writeHead(statusCode);
+  res.end(payloadString);
+
+  // Log the response
+  // If the response is 200 or 201 print green otherwise print red
+  if (statusCode === 200 || statusCode === 201) {
+    debug('\x1b[32m%s\x1b[0m', `${method.toUpperCase()} /${trimmedPath} ${statusCode}`);
+  } else {
+    debug('\x1b[31m%s\x1b[0m', `${method.toUpperCase()} /${trimmedPath} ${statusCode}`);
+  }
+};
 
 // Define request router
 server.router = {
